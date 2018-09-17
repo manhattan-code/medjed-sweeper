@@ -1,0 +1,484 @@
+<html>
+    <head>
+        <meta charset="utf-8"/>
+        <title>メジェドスイーパー</title>
+        <style type="text/css">
+            .block{
+                width: 48px;
+                height: 48px;
+            }
+            div.container {
+                margin: 20px auto;
+                text-align: center;
+            }
+            div.components_container {
+                margin: 20px auto;
+                text-align: center;
+            }
+            .stage {
+                margin: 0 auto;
+            }
+            .overlay {
+                position: fixed;
+                margin: 0;
+                padding: 0;
+                width: 100%;
+                height: 100%;
+                background-color: rgba(0,0,0,0.5);
+                top:0;
+                left:0;
+            }
+            .window {
+                margin: 20px auto;
+                width: 50%;
+                background-color: whitesmoke;
+            }
+
+            .title {
+                text-align: center;
+                font-size: 15px;
+                color:red;
+            }
+
+            button {
+                position: relative;
+                width: 100px;
+                height: 40px;
+                margin-top: 20px;
+                margin-bottom: 20px;
+            }
+
+            .open {
+                margin-left: 10px;
+            }
+            .flag {
+                margin-left: 10px;
+            }
+            .ques {
+                margin-left: 10px;
+            }
+            .reset {
+                margin-left: 50px;
+            }
+            .status {
+                top: 80px;
+                left: 50px;
+            }
+
+        </style>
+    </head>
+    <body onload="init();">
+        <div class="stage" id="stage"/>
+    </body>
+    <script type="text/javascript">
+
+        var width = 12;
+        var height = 12;
+        var bomNum = 15;
+        var mode = "open";
+        var blocks = {"block_info": [[]]};
+
+        var closeBlockNum = 0;
+        var flagNum = 0;
+
+        var gameFlg = "clear";
+        var overlay = undefined;
+
+        function init() {
+            createComponents();
+            createBlocks(width, height);
+            initGame(width, height, bomNum);
+            refreshBlocks();
+        }
+
+        function resetGame() {
+            removeOverlay();
+            initGame(width, height, bomNum);
+            refreshBlocks();
+        }
+
+        function initGame(x, y, bomNum) {
+            gameFlg = "playing";
+            for (var i = 0; i < y; i++) {
+                blocks.block_info[i] = [];
+                for (var j = 0; j < x; j++) {
+                    blocks.block_info[i][j] = {}
+                    blocks.block_info[i][j]["class"] = "block";
+                    blocks.block_info[i][j]["bom"] = false;
+                    blocks.block_info[i][j]["open"] = false;
+                    blocks.block_info[i][j]["flag"] = false;
+                    blocks.block_info[i][j]["ques"] = false;
+                }
+            }
+
+            // add boms
+            var bomCount = 0;
+            while(bomCount != bomNum) {
+                var px = Math.floor(Math.random() * width);
+                var py = Math.floor(Math.random() * height);
+                if (blocks.block_info[py][px]["bom"] != true) {
+                    blocks.block_info[py][px]["bom"] = true;
+                    bomCount++;
+                }
+            }
+
+            // around boms count
+            for (var i = 0; i < y; i++) {
+                for (var j = 0; j < x; j++) {
+                    if (blocks.block_info[i][j]["bom"] != true) {
+                        var count = 0;
+                        count += isBom(j -1, i -1);
+                        count += isBom(j -1, i -0);
+                        count += isBom(j -1, i +1);
+                        count += isBom(j -0, i -1);
+                        count += isBom(j -0, i +1);
+                        count += isBom(j +1, i -1);
+                        count += isBom(j +1, i -0);
+                        count += isBom(j +1, i +1);
+                        blocks.block_info[i][j]["around"] = count;
+                    }
+                }
+            }
+
+            // console.log(blocks.block_info);
+        }
+
+        function isBom(x, y) {
+            var count = 0;
+            // console.log("x: " + x + ", y: " + y);
+            if (x < 0 || width - 1 < x || y < 0 || height - 1 < y) {
+                return 0;
+            } else if (blocks.block_info[y][x]["bom"]) {
+                return 1;
+            } else {
+                return 0;
+            }
+        }
+
+        function onClickBlock(block) {
+            if (block.type === undefined ) {
+                // console.log("block: x: " + block.positionX + ", y: " + block.positionY);
+                switch (mode) {
+                    case "open":
+                        open(block.positionX, block.positionY);
+                        break;
+                    case "flag":
+                        flag(block.positionX, block.positionY);
+                        break;
+                    case "ques":
+                        ques(block.positionX, block.positionY);
+                        break;
+                }
+            }
+        }
+
+        function createComponents() {
+            var stage = document.getElementById("stage");
+
+            var components = document.createElement("div");
+            components.className = "components_container";
+            components.id = "components_container";
+            stage.appendChild(components);
+
+            var open = document.createElement("button");
+            var flag = document.createElement("button");
+            var ques = document.createElement("button");
+            var reset = document.createElement("button");
+
+            open.className = "open";
+            flag.className = "flag";
+            ques.className = "ques";
+            reset.className = "reset";
+
+            open.addEventListener("click", function(){
+                mode = "open";
+                document.getElementsByClassName("open")[0].disabled = "true";
+                document.getElementsByClassName("flag")[0].disabled = "";
+                document.getElementsByClassName("ques")[0].disabled = "";
+            });
+
+            flag.addEventListener("click", function() {
+                mode = "flag";
+                document.getElementsByClassName("open")[0].disabled = "";
+                document.getElementsByClassName("flag")[0].disabled = "true";
+                document.getElementsByClassName("ques")[0].disabled = "";
+            })
+
+            ques.addEventListener("click", function() {
+                mode = "ques";
+                document.getElementsByClassName("open")[0].disabled = "";
+                document.getElementsByClassName("flag")[0].disabled = "";
+                document.getElementsByClassName("ques")[0].disabled = "true";
+            })
+
+            reset.addEventListener("click", function() {
+                initGame(width, height, bomNum);
+                refreshBlocks();
+            })
+
+            open.innerText = "open";
+            flag.innerText = "F";
+            ques.innerText = "?";
+            reset.innerText = "Reset";
+
+            components.appendChild(open);
+            components.appendChild(flag);
+            components.appendChild(ques);
+            components.appendChild(reset);
+
+            mode = "open";
+            document.getElementsByClassName("open")[0].disabled = "true";
+            document.getElementsByClassName("flag")[0].disabled = "";
+            document.getElementsByClassName("ques")[0].disabled = "";
+
+            var status = document.createElement("p");
+            status.className = "status";
+            status.id = "status";
+            status.innerText = " a";
+            components.appendChild(status);
+        }
+
+        function createBlocks(x, y) {
+            blocks["x"] = x;
+            blocks["y"] = y;
+            var stage = document.getElementById("stage");
+
+            var container = document.createElement("div");
+            container.className = "container";
+            stage.appendChild(container);
+
+            for (var i = 0; i < y; i++) {
+                for (var j = 0; j < x; j++) {
+                    var block = document.createElement("img");
+                    block.className = "block";
+                    block.id = j +  ":" +  i;
+                    block.onclick = onClickBlock;
+                    block.addEventListener("click", function(){ onClickBlock(this)});
+                    block.positionX = j;
+                    block.positionY = i;
+                    block.src = "img/block.png";
+
+
+                    container.appendChild(block);
+                    if (j == x -1) {
+                        container.appendChild(document.createElement("br"));
+                    }
+                }
+            }
+            // console.log("finish");
+        }
+
+        function open(x, y) {
+            var block = blocks.block_info[y][x];
+            if (!block["flag"] && !block["ques"]) {
+                block["open"] = true;
+                if (block["around"] === 0) {
+                    checkAround(x, y);
+                }
+            }
+
+            refreshBlocks();
+        }
+
+        function flag(x, y) {
+            var block = blocks.block_info[y][x];
+            if (!block["open"]) {
+                block["flag"] = !block["flag"];
+                block["ques"] = false;
+            }
+            refreshBlocks();
+        }
+
+        function ques(x, y) {
+            var block = blocks.block_info[y][x];
+            if (!block["open"]) {
+                block["ques"] = !block["ques"];
+                block["flag"] = false;
+            }
+            refreshBlocks();
+        }
+
+        function checkAround(x, y) {
+            var checkList = [
+                {"x": x - 1, "y": y -1},
+                {"x": x - 1, "y": y -0},
+                {"x": x - 1, "y": y +1},
+                {"x": x - 0, "y": y -1},
+                {"x": x - 0, "y": y -0},
+                {"x": x - 0, "y": y +1},
+                {"x": x + 1, "y": y -1},
+                {"x": x + 1, "y": y -0},
+                {"x": x + 1, "y": y +1},
+            ];
+
+            checkList = deleteOpenPoint(checkList);
+
+            while(checkList.length != 0) {
+                var point = checkList[0];
+                checkList.shift();
+
+                if (point.x < 0 || width -1 < point.x || point.y < 0 || height-1 < point.y) {
+
+                } else {
+                    var block = blocks.block_info[point.y][point.x];
+                    if (!block["open"] && !block["bom"]) {
+                        block["open"] = true;
+                    }
+                    if (block["around"] === 0) {
+                        checkList.push({"x": point.x -1, "y": point.y -1});
+                        checkList.push({"x": point.x -1, "y": point.y});
+                        checkList.push({"x": point.x -1, "y": point.y +1});
+                        checkList.push({"x": point.x, "y": point.y -1});
+                        checkList.push({"x": point.x, "y": point.y});
+                        checkList.push({"x": point.x, "y": point.y +1});
+                        checkList.push({"x": point.x +1, "y": point.y -1});
+                        checkList.push({"x": point.x +1, "y": point.y});
+                        checkList.push({"x": point.x +1, "y": point.y +1});
+                    }
+                }
+
+                checkList = deleteOpenPoint(checkList);
+            }
+            // console.log("checkAround");
+            // console.log(blocks.block_info);
+        }
+
+        function deleteOpenPoint(checkList) {
+            var newList = [];
+            for (var i = 0; i < checkList.length; i++) {
+                var point = checkList[i];
+                if (point.x < 0 || width -1 < point.x || point.y < 0 || height -1 < point.y) {
+                    continue;
+                }
+                if (!blocks.block_info[point.y][point.x]["open"]) {
+                    newList.push(point);
+                }
+            }
+
+            return newList;
+        }
+
+        function refreshBlocks() {
+            flagNum = 0;
+            closeBlockNum = 0;
+            for (var i = 0; i < height; i++) {
+                for (var j = 0; j < width; j++) {
+                    var info = blocks.block_info[i][j];
+                    var block = document.getElementById(j + ":" + i);
+                    // var cls = "block";
+
+                    // console.log(info);
+                    if (info["open"]) {
+                        if (info["bom"]) {
+                            block.src = "img/bom.png";
+                            gameFlg = "gameOver";
+                        } else {
+                            switch(info["around"]) {
+                                case 0: block.src = "img/open.png"; break;
+                                case 1: block.src = "img/open_1.png"; break;
+                                case 2: block.src = "img/open_2.png"; break;
+                                case 3: block.src = "img/open_3.png"; break;
+                                case 4: block.src = "img/open_4.png"; break;
+                                case 5: block.src = "img/open_5.png"; break;
+                                case 6: block.src = "img/open_6.png"; break;
+                                case 7: block.src = "img/open_7.png"; break;
+                                case 8: block.src = "img/open_8.png"; break;
+                            }
+                        }
+                    } else if (info["flag"]) {
+                        block.src = "img/flag.png";
+                        flagNum++;
+                    } else if (info["ques"]) {
+                        block.src = "img/question.png";
+                        closeBlockNum++;
+                    } else {
+                        block.src = "img/block.png";
+                        closeBlockNum++;
+                    }
+                }
+            }
+
+            if (closeBlockNum == 0 || bomNum == closeBlockNum + flagNum) {
+                gameFlg = "clear";
+            }
+
+            var status = document.getElementById("status");
+            status.innerText = "ボム残数: " + (bomNum - flagNum) + " 残ブロック: " + closeBlockNum;
+
+            switch (gameFlg) {
+                case "playing":
+                    removeOverlay();
+                    break;
+                case "clear":
+                    showClearOverlay();
+                    break;
+                case "gameOver":
+                    showGameOverOverlay();
+                    break;
+            }
+        }
+
+        function removeOverlay() {
+            if (overlay !== undefined) {
+                var stage = document.getElementById("stage");
+                stage.removeChild(overlay);
+                overlay = undefined;
+            }
+        }
+
+        function showClearOverlay() {
+            removeOverlay();
+            var stage = document.getElementById("stage");
+            overlay = document.createElement("div");
+            overlay.className = "overlay";
+
+            stage.appendChild(overlay);
+
+            var window = document.createElement("div");
+            window.className = "window";
+            overlay.appendChild(window);
+
+            var title = document.createElement("p");
+            title.className = "title";
+            title.innerText = "ゲームクリア";
+            window.appendChild(title);
+
+            var reset = document.createElement("button");
+            reset.className = "reset";
+            reset.innerText = "reset";
+            reset.addEventListener("click", function() {
+                resetGame();
+            });
+            window.appendChild(reset);
+
+        }
+
+        function showGameOverOverlay() {
+            removeOverlay();
+            var stage = document.getElementById("stage");
+            overlay = document.createElement("div");
+            overlay.className = "overlay";
+
+            stage.appendChild(overlay);
+
+            var window = document.createElement("div");
+            window.className = "window";
+            overlay.appendChild(window);
+
+            var title = document.createElement("p");
+            title.className = "title";
+            title.innerText = "ゲームオーバー";
+            window.appendChild(title);
+
+            var reset = document.createElement("button");
+            reset.className = "reset";
+            reset.innerText = "reset";
+            reset.addEventListener("click", function() {
+                resetGame();
+            });
+            window.appendChild(reset);
+        }
+
+
+    </script>
+</html>
